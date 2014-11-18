@@ -8,10 +8,13 @@ Therefore, the best choice in terms of performance is to develop Hadoop applicat
 
 The general case of automatically translating an arbitrary Perl code into its Java equivalent is a very hard problem, due to the characteristics of both languages. Note that our objective in this work was not to develop a powerful tool that allows to automatically translate any existent Perl code to Java, but a simple and easy-to-use tool that takes as input Perl codes written for Hadoop Streaming, and produces Hadoop-ready Java codes.
 
+If you use **Perldoop**, please cite this article: 
+
+J. M. Abuin, J. C. Pichel, T. F. Pena, P. Gamallo and M. Garcia. "[Perldoop: Efficient Execution of Perl Scripts on Hadoop Clusters](http://proxectos.citius.usc.es/hpcpln/images/documents/abuin14Perldoop.pdf)", IEEE International Conference on Big Data, pp. 766-771, 2014.
 
 # How to use #
 
-The main file of the tool is `Perldoop.py`, located in src/, which has two input parameters:
+The main file of the tool is `Perldoop.py`, located in *src/*, which has two input parameters:
 
 * The route to the Perl script to translate. The Perl code should be labeled and programmed following the rules detailed in the User Manual.
 * The route to the Java template where the translated code will be inserted.
@@ -29,4 +32,4 @@ After downloading the **Perldoop** source code, the user will find three directo
 * *examples/* Simple examples to illustrate the use of **Perldoop**. In the current version it includes **HelloWorld** and **WordCount** applications written in Perl.
 * *applications/* More complex Perl applications. The current version includes three natural language processing modules written in Perl. In particular, the modules process plain text to perform the following tasks: **Named Entity Recognition** (NER), **Part-of-Speech Tagging** and **Named Entity Classification** (NEC). All the modules process text in Spanish language. 
 
-All the examples and applications have been tested by using Hadoop 2.2.0.
+All the examples and applications have been tested using **Hadoop 2.2.0**.
