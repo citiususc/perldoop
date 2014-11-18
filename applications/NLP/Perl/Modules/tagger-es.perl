@@ -1,0 +1,612 @@
+#!/usr/bin/perl
+
+#<perl>#PoS tagger
+#<perl>#autor: Pablo Gamallo
+#<perl>#Grupo ProlNat@GE, CITIUS
+#<perl>#Universidade de Santiago de Compostela
+
+
+#<perl># Desambigua os tags do ficheiro gerado por ner.perl
+
+use strict; 
+binmode STDIN, ':utf8';
+binmode STDOUT, ':utf8';
+use utf8;
+
+#<perl># Absolute path 
+use Cwd 'abs_path';
+use File::Basename;
+my $abs_path = dirname(abs_path($0));
+
+
+
+open (MODEL, $abs_path."/model/train-es") or die "O ficheiro não pode ser aberto: $!\n";
+binmode MODEL,  ':utf8';
+my @train = <MODEL>;
+
+#<perl>##variabeis globais
+my $w=1; #<perl>##mesma janela/window que no treino
+my $Border = "(Fp|<blank>)";
+my @cat_open = ("NP", "NC", "VM", "RG", "AQ");
+
+my $N;
+my %PriorProb;
+my %ProbCat;
+my %featFreq;
+
+sub tagger {
+	my (@text) = @_ ;
+
+	my @saida;
+	my $result;
+	#<perl>#my $text;
+	my $pos=0;
+	my $s=0; #<perl>#numero de frases
+	my $tag;
+	my @noamb;
+	my @unk;
+	my @Token;
+	my @Tag;
+	my @Lema;
+	my %TagHash;
+	my %LemaHash;
+	my @Feat;
+	my @Cat;
+	my $amb;
+	my $cat;
+
+	#<perl>#####################
+	#<perl>#                   #
+	#<perl>#    READING TRAIN  #
+	#<perl>#                   #
+	#<perl>#####################
+	
+	my $count=0;
+	foreach  my $line (@train) {  #<perl>##leitura treino
+
+
+		my $cat;
+		my $prob; 
+		my $feat;
+		my $freq;
+  
+		$count++; 
+		chomp $line;
+		#<perl>#$line = trim($line);
+  
+		($N) = ($line =~ /<number\_of\_docs>([0-9]*)</) if ($count==1);
+
+		if ($line =~ /<cat>/) { 
+			(my $tmp) = $line =~ /<cat>([^<]*)</ ;
+			#<perl>#print STDERR "ProbCat: ---> #$tmp# \n";
+			($cat, $prob) = split (" ", $tmp);
+			$ProbCat{$cat}=$prob ;
+			#<perl>#print STDERR "CAT: ---> #$cat# \n";
+
+		}
+
+
+		($feat, $cat, $prob, $freq) = split(/ /, $line) if ($line !~ /<cat>/);
+   
+		$PriorProb{$cat}{$feat} = $prob if ($cat);
+		$featFreq{$feat} = $freq;
+		#<perl># print STDERR "CAT: ---> #$cat# ::: FEAT: #$feat# --  $featFreq{$feat}\n";
+		#<perl>#printf STDERR "<%7d>\r",$cont if ($cont++ % 100 == 0);
+   
+	}
+
+	#<perl>###############################
+	#<perl>#                             #
+	#<perl>##INPUT: FRASE A ANALISAR######
+	#<perl>#                             #
+	#<perl>###############################
+	#<perl>#print STDERR "entrada: #@entrada#\n";
+	#<perl># $text = join ("",@text);
+
+	#<perl>#my @lines = split ('\n', $texto);
+	#<perl>#foreach my $line (@lines) {
+	foreach my $line (@text) {
+		if ($line !~ /\w/ || $line =~ /^[ ]$/) {next}
+ 
+			(my @entry) = split (" ", $line);   
+  
+  
+			#<perl><start>
+			if (($#entry>=2) && ($entry[2] !~ /^$Border$/)) {
+				$Token[$pos] = $entry[0];     
+				my $i=1; #<perl><var><integer>
+				
+				while ($i<=$#entry) {
+					$Lema[$pos] =  $entry[$i];
+					$i++  ;
+					
+					$tag = $entry[$i];
+         
+					if ($tag =~ /^V/){
+						($Tag[$pos]) = $tag =~ /^([A-Z][A-Z][A-Z])/;
+         	
+					}
+         
+					if ($tag !~ /^V/){
+						($Tag[$pos]) = $tag =~ /^([A-Z][A-Za-z0-9]?)/;
+         	
+					}
+         
+					$TagHash{$pos}{$Tag[$pos]} = $tag;
+         
+					$LemaHash{$pos}{$tag} = $Lema[$pos];
+					
+					$i++;
+
+					#<perl>#print STDERR "LEMA:: #$Token[$pos]# #$LemaHash{$pos}{$Tag[$pos]}# #$Tag[$pos]#\n"; 
+					#<perl>#print STDERR "----$Tag[$pos]# --#$ProbCat{$Tag[$pos]}#\n";
+				}
+    
+				if ($#entry == 2 && $entry[2] ne "UNK") { #<perl>##identificar formas nao ambiguas nem desconhecidas (unk)
+					$noamb[$pos]=1; #<perl><var><boolean>
+				}
+				
+				if ($#entry == 2 && $entry[2] eq "UNK") { #<perl>##identificar formas  desconhecidas (unk)
+					$unk[$pos]=1; #<perl><var><boolean>
+				}
+				
+				$pos++;
+
+			}
+  
+			#<perl>else {
+			elsif($#entry>=2){
+				
+				$s++;
+
+				#<perl>##guardar info da ultima forma da frase (Fp ou blank)
+				
+				(my @entry) = split (" ", $line);
+
+				#<perl>#print STDERR "LAST: #$line#\n";
+
+				#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+				#<perl>my $last_entry =  $entry[0]." ".$entry[1]." ".$entry[2]; #<perl><var><string>
+				
+				my $last_entry =  $entry[0]." "; #<perl><var><string>
+				$last_entry = $last_entry . $entry[1];
+				$last_entry = $last_entry . " ";
+				$last_entry = $last_entry . $entry[2];
+
+				for ($pos=0;$pos<=$#Tag;$pos++) {
+					#<perl>#print STDERR "TOKENS::: #$pos# -- #$Token[$pos]#\n";
+					
+					if ($noamb[$pos]) {
+
+						#<perl>###RESULTADO para nao ambiguas nem desconhecidas: 
+						#<perl>#print "$Token[$pos] $Lema[$pos] $TagHash{$pos}{$Tag[$pos]}\n";
+						
+						#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+						#<perl>$result = $Token[$pos]." ".$Lema[$pos]." ".$TagHash{$pos}{$Tag[$pos]};
+						
+						$result = $Token[$pos]." ";
+						$result = $result . $Lema[$pos];
+						$result = $result . " ";
+						$result = $result . $TagHash{$pos}{$Tag[$pos]};
+						
+						
+						push (@saida, $result);
+					}
+					else {
+						if (!$unk[$pos]) { #<perl>#se a forma e ambigua mas conhecida, utilizamos a lista de tags atribuida a forma
+							
+							if($TagHash{$pos}){
+								
+								foreach  my $cat (keys %{$TagHash{$pos}}) {
+									#<perl>#print STDERR "----#$cat# \n";
+									
+									push (@Cat, $cat);
+								}
+							}
+						}
+						elsif ($unk[$pos] && $Token[$pos] =~ /[\w]+mente$/) { #<perl>##se a forma e desconhecida acabada em -mente, RG
+							my $catTmp = "RG"; #<perl><var><string>
+							push (@Cat, $catTmp);
+						}
+						else { #<perl>#se a forma e desconhecida, utilizamos uma lista de tags de classes abertas
+							foreach my $cat (@cat_open) {
+								#<perl>#print STDERR "UNK----#$cat# \n";
+								
+								push (@Cat, $cat);
+							}
+
+						}
+
+						#<perl>#buscar a informaçao das entradas a direita (w=1)
+
+						my $k=0; #<perl><var><integer>
+            
+						if ($pos==0) {
+						
+							for (my $j=1;$j<=$w;$j++) { #<perl><var><integer>
+								
+								if (($w<=$#noamb) && ($noamb[$j])) {
+									$amb = "noamb";
+								}
+								else {
+									$amb = "amb";
+								}
+								
+								if($TagHash{$j}){
+									
+									foreach my $feat (keys %{$TagHash{$j}}) {
+										
+										$k++;
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl> $feat = $amb . "_" . $k . "_" . $w . "_R_" . $feat;
+										
+										my $featAux = $feat; #<perl><var><string>
+										
+										$feat = $amb . "_";
+										$feat = $feat . $k;
+										$feat = $feat . "_";
+										$feat = $feat . $w;
+										$feat = $feat . "_R_";
+										$feat = $feat . $featAux;
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl>my $featL = $feat . "_" .  $Token[$pos]; #<perl><var><string>
+										my $featL = $feat . "_"; #<perl><var><string>
+										$featL = $featL . $Token[$pos];
+										
+										#<perl># print STDERR "----#$feat# \n";
+										
+										push (@Feat, $feat);
+										push (@Feat, $featL);
+									}
+								}
+								
+								$k=0;
+								$amb="";
+							}
+						}
+
+						elsif ($pos==$#Tag) {
+						
+							my $end=$#Tag-$w;  #<perl><var><integer>
+							
+							for (my $j=$#Tag-1;$j>=$end;$j--) { #<perl><var><integer>
+								
+								if ($noamb[$j]) {
+									$amb = "noamb";
+								}
+								else {
+									$amb = "amb";
+								}
+		 		
+								if($TagHash{$j}){
+									
+									foreach my $feat (keys %{$TagHash{$j}}) {
+										
+										$k++;
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl> $feat =  $amb . "_" . $k . "_" . $w . "_L_" . $feat;
+										
+										my $featAux = $feat; #<perl><var><string>
+										
+										$feat = $amb . "_";
+										$feat = $feat . $k;
+										$feat = $feat . "_";
+										$feat = $feat . $w;
+										$feat = $feat . "_L_";
+										$feat = $feat . $featAux;
+										
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl>my $featL = $feat . "_" .  $Token[$pos]; #<perl><var><string>
+										my $featL = $feat . "_"; #<perl><var><string>
+										$featL = $featL . $Token[$pos];
+										
+										#<perl>#   print STDERR "OKKK----#$TagHash{$pos}# \n";
+										
+										push (@Feat, $feat);
+										push (@Feat, $featL);
+									}
+								}
+								
+								$k=0;
+								$amb="";
+							}
+						}
+						
+						else {
+							
+							my $end=$pos+$w; #<perl><var><integer>
+							
+							#<perl>#print STDERR "i=#$i#::: #$Cat# -- #$#Tag#\n";
+							
+							for (my $j=$pos+1;$j<=$end;$j++) { #<perl><var><integer>
+								
+								if ($noamb[$j]) {
+									$amb = "noamb";
+								}
+								else {
+									$amb = "amb";
+								}
+
+								if($TagHash{$j}){
+									
+									foreach my $feat (keys %{$TagHash{$j}}) {
+
+										$k++;
+										
+										#<perl> Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl> $feat = $amb . "_" . $k . "_" . $w . "_R_" . $feat;
+										
+										my $featAux = $feat; #<perl><var><string>
+										
+										$feat = $amb . "_";
+										$feat = $feat . $k;
+										$feat = $feat . "_";
+										$feat = $feat . $w;
+										$feat = $feat . "_R_";
+										$feat = $feat . $featAux;
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl>my $featL = $feat . "_" .  $Token[$pos]; #<perl><var><string>
+										
+										my $featL = $feat . "_"; #<perl><var><string>
+										$featL = $featL . $Token[$pos];
+										
+										#<perl># print STDERR "OKKK----#$Token[$pos]# \n";
+										#<perl>#print STDERR "----#$feat# \n";
+										push (@Feat, $feat);
+										push (@Feat, $featL);
+									}     
+								}
+								
+								$k=0; 
+								$amb="";
+							}  
+
+							$end=$pos-$w; 
+							
+							for (my $j=$pos-1;$j>=$end;$j--) { #<perl><var><integer>
+								
+								if ($noamb[$j]) {
+									$amb = "noamb";
+								}
+								else {
+									$amb = "amb";
+								}
+								
+								if($TagHash{$j}){
+									foreach my $feat (keys %{$TagHash{$j}}) {
+										$k++;
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl> $feat = $amb . "_" . $k . "_" . $w . "_L_" . $feat;
+										
+										my $featAux = $feat; #<perl><var><string>
+										
+										$feat = $amb . "_";
+										$feat = $feat . $k;
+										$feat = $feat . "_";
+										$feat = $feat . $w;
+										$feat = $feat . "_L_";
+										$feat = $feat . $featAux;
+										
+										
+										#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+										#<perl>my $featL = $feat . "_" .  $Token[$pos]; #<perl><var><string>
+										my $featL = $feat . "_"; #<perl><var><string>
+										$featL = $featL . $Token[$pos];
+										
+										#<perl>#print STDERR "----#$feat# \n";
+										
+										push (@Feat, $feat);
+										push (@Feat, $featL);
+								}
+							}  
+
+							$k=0;    
+                			$amb="";
+						}
+
+					}
+
+					$tag = classif (\@Feat, \@Cat);
+					#<perl>#print STDERR "RES:::::#$Token[$pos]# #$tag#\n";
+	
+					if ($unk[$pos]) {
+	
+						if ($tag =~ /^[NV]/){
+							$tag =~ s/^([^ ]+)/${1}00000/;
+						}
+            
+						if ($tag =~ /^[A]/){
+							$tag =~ s/^([^ ]+)/${1}0000/;
+						}
+						
+						$Tag[$pos] = $tag;
+						$LemaHash{$pos}{$Tag[$pos]} =  $Token[$pos];
+					}
+					else {
+	
+						if($TagHash{$pos}{$tag}){
+	
+							$Tag[$pos] = $TagHash{$pos}{$tag} ;
+						}
+					}
+
+					#<perl>###RESULTADO:
+					#<perl>#print "$Token[$pos] $Lema[$pos] $Tag[$pos]\n";
+					#<perl># print STDERR "-- #$Lema[$pos]# -- #$Tag[$pos]# -- #$LemaHash{$pos}{$Tag[$pos]}#\n";
+
+					if($LemaHash{$pos}{$Tag[$pos]}){
+					
+						#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+						#<perl>$result = $Token[$pos]." ".$LemaHash{$pos}{$Tag[$pos]}." ".$Tag[$pos];
+						
+						$result = $Token[$pos]." ";
+						$result = $result . $LemaHash{$pos}{$Tag[$pos]};
+						$result = $result . " ";
+						$result = $result . $Tag[$pos];
+						
+						push (@saida, $result);       
+					}
+		
+					undef @Feat;
+					undef @Cat;      
+				}
+			}
+			
+			#<perl>###RESULTADO:
+			#<perl># print "$last_entry\n";
+			
+			#<perl>Previo a cambio 0.6.2.0 (Concatenacions)
+			#<perl>$result = "".$last_entry."";
+			
+			$result = "" . $last_entry;
+			$result = $result . "";
+			
+			push (@saida, $result);    
+
+      
+			for ($pos=0;$pos<=$#Tag;$pos++) {
+          
+				delete $TagHash{$pos}; 
+				delete $LemaHash{$pos};
+			}  
+
+			#<perl>#splice @Tag, 0, $#Tag ;
+     
+			undef @Tag; #<perl><array><string>
+			undef @Token;#<perl><array><string>
+			undef @Lema;#<perl><array><string>
+			undef @noamb;#<perl><array><boolean>
+			undef @unk;#<perl><array><boolean>
+			$pos=0;
+
+			#<perl>#splice @Token, 0, $#Token ;
+			#<perl>#splice @Lema, 0, $#Lema ;
+			#<perl>#splice @noamb, 0, $#noamb ;
+			#<perl>#splice @unk, 0, $#unk ;       
+		}
+		
+		#<perl><end>
+	}
+
+	#<perl>print STDERR "number of sentences: #$s#\n";
+	return @saida;
+}
+
+
+sub classif {
+ my @F = @{$_[0]};
+ my @C = @{$_[1]};
+
+ my $result;
+ 
+
+#<perl>#########################################
+#<perl>#                                       #
+#<perl>#       Classification                  #
+#<perl>#                                       #
+#<perl>#########################################
+
+  
+ my %found;
+ my $smooth = 1/$N ;
+ my $cat_restr;
+ my $feat_restr;
+ my @CAT_RESTR;
+ my $n; 
+ my $cat;
+ my $feat;
+ my %PostProb;
+
+#<perl>##Para cada cat, construir os cat_restr em funçao do numero de features ambiguos
+ foreach $cat (@C) {
+   foreach $feat (@F) {
+
+     ($n)  = $feat =~ /^[a-z]+\_([0-9]+)/;
+
+     $cat_restr = $cat . "_" . $n; 
+     push (@CAT_RESTR, $cat_restr);
+   }
+ }
+
+
+ #<perl>#my $Normalizer=0;
+ foreach $cat_restr (@CAT_RESTR) {
+ #print STDERR "Entrada en classif: ".$cat_restr."\n";
+  ($cat) = $cat_restr =~ /([A-Z]+)\_[0-9]+$/;
+  ($n)  = $feat =~ /^[a-z]+\_([0-9]+)/; #<perl> Chema: feat pode estar sen inicializar!!
+  $PostProb{$cat_restr}  = $ProbCat{$cat};
+  #<perl>#print STDERR "----#$cat_restr# #$ProbCat{$cat}#\n";
+  $found{$cat_restr}=0;
+  foreach $feat_restr (@F) {
+     
+       ($feat) = $feat_restr =~ /^[a-z]+\_[0-9]+\_[0-9]\_([RL]\_[^ ]+)/;
+       (my $m) = $feat_restr =~ /^[a-z]+\_([0-9]+)/;
+       #<perl>#print STDERR "FEAT: #$cat# - #$feat#\n";
+       if (!$featFreq{$feat}) { 
+         #<perl>#  print STDERR "----#$cat# - #$feat#\n" ;
+           next;
+       }    
+      
+      #<perl>#if ($feat_restr =~ /^noamb/ || $m == $n) {
+
+		if($PriorProb{$cat}{$feat}  ==0){
+		#print STDERR "Entra e pon a smooth\n";
+        $PriorProb{$cat}{$feat}  = $smooth;
+        }
+        $found{$cat_restr}=1;
+        #print STDERR "Operase: $PostProb{$cat_restr} * $PriorProb{$cat}{$feat} --cat: $cat--feat: $feat\n"; 
+        $PostProb{$cat_restr} = $PostProb{$cat_restr} * $PriorProb{$cat}{$feat};
+       
+       #print STDERR "Res: #$cat_restr# - #$PostProb{$cat_restr}#\n";
+       #<perl># print STDERR "----#$cat# - #$feat# PriorProb#$PriorProb{$cat}{$feat}# PostProb#$PostProb{$cat_restr}#  -- featFreq:#$featFreq{$feat}# N=#$N#  \n";
+      #<perl>#}
+  }
+ #print STDERR "OperaseF: $PostProb{$cat_restr} * $ProbCat{$cat}\n";
+  $PostProb{$cat_restr} =  $PostProb{$cat_restr} * $ProbCat{$cat} ;
+  #print STDERR "ResF: #$cat_restr# - #$PostProb{$cat_restr}#\n";
+  $PostProb{$cat_restr} = 0 if (!$found{$cat_restr});
+  #<perl>#$Normalizer +=   $PostProb{$cat}
+ }
+#print STDERR "TAMANHO CAT_RESTR $#CAT_RESTR F: $#F C: $#C\n" ;
+#print STDERR @F;
+#print STDERR @C;
+ my $First=0;
+#<perl> this sorts the %age hash by value instead of key
+#<perl> using an in-line function
+#<perl> @eldest = sort { $age{$b} <=> $age{$a} } keys %age;
+ foreach my $c (sort {$PostProb{$b} <=>
+                      $PostProb{$a} }
+                      keys %PostProb ) {
+    #print STDERR "$c\t$PostProb{$c}\n";
+    
+    if (!$First) {
+         my $score = $PostProb{$c};
+	  $c =~ s/_[0-9]+//;
+         #<perl># print STDERR "$c\t$score\n";
+         
+	  $result = "$c";
+          $First=1;
+    }
+ }
+ #print STDERR "FIN\n\n";
+  #<perl># print STDERR "RES:::: #$result#\n";
+  
+ return $result;
+ 
+}
+
+
+
+sub trim {    #<perl>#remove all leading and trailing spaces
+  my ($str) = @_[0];
+
+  $str =~ s/^\s*(.*\S)\s*$/$1/;
+  return $str;
+}
+

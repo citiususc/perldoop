@@ -1,0 +1,3 @@
+[OPTIONS]
+secuencial=false
+hadoop=true
