@@ -19,7 +19,7 @@ The main file of the tool is Perldoop.py, located in src/, which has two input p
 
 Therefore, the correct syntax to execute **Perldoop** is:
 
-`python Perldoop.py \[perl-file\] \[java-template-file\] > \[output-java-file\]`
+`python Perldoop.py [perl-file] [java-template-file] > [output-java-file]`
 
 # Repository Contents #
 
