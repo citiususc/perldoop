@@ -1,4 +1,4 @@
-# Whats's Perldoop about? #
+# What's Perldoop about? #
 
 **Perldoop** is a new tool developed by researchers from University of Santiago de Compostela (Spain) as part of the project "High Performance Computing for Natural Language Processing -- HPCNLP". This tool automatically translates Hadoop-ready Perl scripts into its Java counterparts, which can be directly executed on a Hadoop cluster while improving their performance significantly. 
 
@@ -11,7 +11,7 @@ The general case of automatically translating an arbitrary Perl code into its Ja
 
 # How to use #
 
-The main file of the tool is Perldoop.py, located in src/, which has two input parameters:
+The main file of the tool is `Perldoop.py`, located in src/, which has two input parameters:
 
 * The route to the Perl script to translate. The Perl code should be labeled and programmed following the rules detailed in the User Manual.
 * The route to the Java template where the translated code will be inserted.
@@ -29,3 +29,4 @@ After downloading the **Perldoop** source code, the user will find three directo
 * *examples/* Simple examples to illustrate the use of **Perldoop**. In the current version it includes **HelloWorld** and **WordCount** applications written in Perl.
 * *applications/* More complex Perl applications. The current version includes three natural language processing modules written in Perl. In particular, the modules process plain text to perform the following tasks: **Named Entity Recognition** (NER), **Part-of-Speech Tagging** and **Named Entity Classification** (NEC). All the modules process text in Spanish language. 
 
+All the examples and applications have been tested by using Hadoop 2.2.0.
