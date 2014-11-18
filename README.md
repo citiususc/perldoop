@@ -16,7 +16,7 @@ J. M. Abuin, J. C. Pichel, T. F. Pena, P. Gamallo and M. Garcia. "[Perldoop: Eff
 
 The main file of the tool is `Perldoop.py`, located in *src/*, which has two input parameters:
 
-* The route to the Perl script to translate. The Perl code should be labeled and programmed following the rules detailed in the User Manual.
+* The route to the Perl script to translate. The Perl code should be labeled and programmed following the rules detailed in the User Manual (located in the *doc/* folder).
 * The route to the Java template where the translated code will be inserted.
 
 
