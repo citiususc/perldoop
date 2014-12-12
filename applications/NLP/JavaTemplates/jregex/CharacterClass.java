@@ -31,6 +31,7 @@ package jregex;
 
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 class CharacterClass extends Term implements UnicodeConstants{
    static final Bitset DIGIT=new Bitset();
    static final Bitset WORDCHAR=new Bitset();

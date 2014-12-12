@@ -59,6 +59,7 @@ import java.util.Vector;
  * @see    jregex.WildcardPattern
  */
 
+@SuppressWarnings("unchecked")
 public class PathPattern extends Pattern{
    private static final int RESERVED=1;
    private static int GRP_NO=RESERVED+1;

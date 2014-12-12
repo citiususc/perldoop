@@ -52,7 +52,7 @@ import java.io.*;
  * multiple threads), and the typical tactics in multithreaded applications is to have one Pattern instance per expression(a singleton),
  * and one Matcher object per thread.
  */
-
+@SuppressWarnings("unchecked")
 public class Matcher implements MatchResult{
   /* Matching options*/
   /**

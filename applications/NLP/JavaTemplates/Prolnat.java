@@ -32,6 +32,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.Log;
 
+@SuppressWarnings("deprecation")
 public class Prolnat extends Configured implements Tool {
 
 	private static final Log LOG = LogFactory.getLog(Prolnat.class);

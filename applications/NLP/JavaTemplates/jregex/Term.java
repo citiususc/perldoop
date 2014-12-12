@@ -31,6 +31,7 @@ package jregex;
 
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 class Term implements REFlags{
    //runtime Term types
    static final int CHAR        = 0;
@@ -200,7 +201,7 @@ class Term implements REFlags{
       this();
       this.type=type;
    }
-   
+   @SuppressWarnings("unchecked")
    static void makeTree(String s, int flags,Pattern re) throws PatternSyntaxException{
       char[] data=s.toCharArray();
       makeTree(data,0,data.length,flags,re);
@@ -247,6 +248,7 @@ class Term implements REFlags{
       re.namedGroupMap=groupNames;
    }
 
+   @SuppressWarnings("unchecked")
    private static Term makeTree(Pretokenizer t,char[] data,int[] vars,
          int flags,Term term,Vector iterators,Hashtable groupNames) throws PatternSyntaxException{
 //System.out.println("Term.makeTree(): flags="+flags);
@@ -2064,6 +2066,7 @@ class Lookbehind extends Term{
    }
 }
 
+@SuppressWarnings("unchecked") 
 class Iterator extends Term{
    
    Iterator(Term term,int min,int max,Vector collection) throws PatternSyntaxException{

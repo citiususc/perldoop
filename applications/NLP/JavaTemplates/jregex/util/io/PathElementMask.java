@@ -36,6 +36,7 @@ import java.util.Enumeration;
 import java.util.Stack;
 import java.util.NoSuchElementException;
 
+@SuppressWarnings("unchecked")
 abstract class PathElementMask{
    protected PathElementMask next;
    protected boolean dirsOnly;
@@ -156,7 +157,7 @@ class AnyFile extends PathElementMask{
       });
    }
 }
-
+@SuppressWarnings("unchecked")
 class AnyPath extends PathElementMask{
    private ListEnumerator.Instantiator inst=new ListEnumerator.Instantiator(){
       public File instantiate(File dir,String name){
