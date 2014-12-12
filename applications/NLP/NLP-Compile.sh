@@ -6,6 +6,10 @@ rm -R ./JavaProgram/Prolnat.jar
 
 cp -R ./JavaTemplates/* ./JavaTranslatedCode/
 
+echo '[OPTIONS]' > ../../src/config.txt
+echo 'secuencial=false' >> ../../src/config.txt
+echo 'hadoop=true' >> ../../src/config.txt
+
 ( cd ../../src/ ; python Perldoop.py ../applications/NLP/Perl/Modules/ner-es.perl ../applications/NLP/JavaTemplates/NER.java > ../applications/NLP/JavaTranslatedCode/NER.java )
 ( cd ../../src/ ; python Perldoop.py ../applications/NLP/Perl/Modules/tagger-es.perl ../applications/NLP/JavaTemplates/Tagger.java > ../applications/NLP/JavaTranslatedCode/Tagger.java )
 ( cd ../../src/ ; python Perldoop.py ../applications/NLP/Perl/Modules/nec-es.perl ../applications/NLP/JavaTemplates/NEC.java > ../applications/NLP/JavaTranslatedCode/NEC.java )
