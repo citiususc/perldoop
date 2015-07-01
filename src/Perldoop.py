@@ -61,7 +61,7 @@ def main():
 			valor = procesaLinha(line)
 			if(valor !=''):
 
-				saida += '//Linha: '+str(i)+' - Contido: '+line
+				saida += '//Line: '+str(i)+' - Content: '+line
 				saida += valor+'\n'
 
 			i += 1
